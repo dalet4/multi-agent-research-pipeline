@@ -1,0 +1,113 @@
+{
+  "name": "Multi-Agent Research Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "research",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "research-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Multi-Agent Research Pipeline N8N Integration\n\nconst fs = require('fs');\nconst path = require('path');\n\n// Add the research pipeline path\nconst projectPath = '/Users/daletaylor/Library/CloudStorage/OneDrive-Personal/All Coding Work/multi-agent-research-pipeline';\nprocess.env.PYTHONPATH = projectPath;\n\n// Python code to execute the research\nconst { execSync } = require('child_process');\n\n// Get input from webhook\nconst query = $input.first().json.body.query || 'Python programming';\nconst maxResults = $input.first().json.body.max_results || 5;\nconst searchStrategy = $input.first().json.body.search_strategy || 'intelligent';\n\n// Python script to run the search\nconst pythonScript = `\nimport sys\nsys.path.insert(0, '${projectPath}')\nfrom n8n_integration import sync_intelligent_search\nimport json\n\nresult = sync_intelligent_search(\"${query}\", ${maxResults})\nprint(json.dumps(result))\n`;\n\n// Write Python script to temp file\nconst tempFile = '/tmp/n8n_research.py';\nfs.writeFileSync(tempFile, pythonScript);\n\ntry {\n  // Execute Python script\n  const result = execSync(`cd \"${projectPath}\" && python3 ${tempFile}`, { encoding: 'utf8' });\n  const searchResults = JSON.parse(result);\n  \n  return [{\n    json: {\n      success: true,\n      query: query,\n      ...searchResults\n    }\n  }];\n  \n} catch (error) {\n  return [{\n    json: {\n      success: false,\n      error: error.message,\n      query: query\n    }\n  }];\n} finally {\n  // Clean up temp file\n  if (fs.existsSync(tempFile)) {\n    fs.unlinkSync(tempFile);\n  }\n}"
+      },
+      "name": "Research Agent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.success}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Success Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"query\": \"{{$json.query}}\",\n  \"total_results\": {{$json.total_results}},\n  \"search_time\": {{$json.search_time}},\n  \"providers_used\": {{$json.providers_used}},\n  \"ai_summary\": \"{{$json.ai_summary}}\",\n  \"results\": {{$json.results}}\n}"
+      },
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false,\n  \"error\": \"{{$json.error}}\",\n  \"query\": \"{{$json.query}}\"\n}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Success Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Check": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "createdAt": "2024-07-25T18:30:00.000Z",
+  "updatedAt": "2024-07-25T18:30:00.000Z",
+  "id": 1
+}
