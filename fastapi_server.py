@@ -239,15 +239,18 @@ async def root():
     }
 
 if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    
     print("🚀 Starting Multi-Agent Research Pipeline API...")
-    print("📝 API Documentation: http://localhost:8000/docs")
-    print("🔍 Example: curl -X POST http://localhost:8000/search -H 'Content-Type: application/json' -d '{\"query\":\"Python frameworks\",\"max_results\":3}'")
+    print(f"📝 API Documentation: http://0.0.0.0:{port}/docs")
+    print(f"🔍 Example: curl -X POST http://0.0.0.0:{port}/search -H 'Content-Type: application/json' -d '{{\"query\":\"Python frameworks\",\"max_results\":3}}'")
     print()
     
     uvicorn.run(
         "fastapi_server:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True,
+        port=port,
+        reload=False,  # Disable reload in production
         log_level="info"
     )
